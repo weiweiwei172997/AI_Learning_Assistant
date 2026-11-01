@@ -49,13 +49,56 @@ def test_teacher_can_register_login_and_read_me(auth_client):
     assert me.json() == {"email": "professor@bnbu.edu.cn", "role": "teacher"}
 
 
-def test_unknown_domain_is_rejected(auth_client):
-    client, _repo = auth_client
+def test_bnbu_student_mail_domain_can_register_and_login(auth_client):
+    client, repo = auth_client
 
     response = client.post(
         "/api/auth/register",
         json={
-            "email": "person@example.com",
+            "email": "Student@MAIL.BNBU.EDU.CN",
+            "password": "correct-horse",
+            "confirm_password": "correct-horse",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "email": "student@mail.bnbu.edu.cn",
+        "role": "teacher",
+    }
+    assert repo.get_user_by_email("student@mail.bnbu.edu.cn") is not None
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "Student@MAIL.BNBU.EDU.CN", "password": "correct-horse"},
+    )
+    assert login.status_code == 200
+    token = login.json()["token"]
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json() == {"email": "student@mail.bnbu.edu.cn", "role": "teacher"}
+
+
+@pytest.mark.parametrize(
+    "email",
+    [
+        "person@example.com",
+        "student@mail.bnbu.cn",
+        "student@mail.bnbu.edu.cn.example.com",
+        "student@sub.mail.bnbu.edu.cn",
+        "student@notmail.bnbu.edu.cn",
+        "student@mail.bnbu.edu.com",
+        "student@bnbu.edu.cn.example.com",
+    ],
+)
+def test_unknown_domain_is_rejected(auth_client, email):
+    client, repo = auth_client
+
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "email": email,
             "password": "correct-horse",
             "confirm_password": "correct-horse",
         },
@@ -63,6 +106,7 @@ def test_unknown_domain_is_rejected(auth_client):
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "unknown_email_domain"
+    assert repo.get_user_by_email(email) is None
 
 
 def test_missing_and_invalid_bearer_token_are_rejected(auth_client):

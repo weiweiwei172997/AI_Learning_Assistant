@@ -15,6 +15,7 @@ Preserve teaching-product identity while keeping the implementation replaceable 
 | Email Pattern | Role | First-Phase Capability |
 | --- | --- | --- |
 | `*@bnbu.edu.cn` | `teacher` | Full artifact generation |
+| `*@mail.bnbu.edu.cn` | `teacher` | Full artifact generation |
 
 Unknown domains must be rejected.
 
@@ -26,7 +27,7 @@ Request:
 
 ```json
 {
-  "email": "xx@bnbu.edu.cn",
+  "email": "xx@mail.bnbu.edu.cn",
   "password": "user supplied password",
   "confirm_password": "user supplied password"
 }
@@ -37,7 +38,7 @@ Response:
 ```json
 {
   "status": "success",
-  "email": "xx@bnbu.edu.cn",
+  "email": "xx@mail.bnbu.edu.cn",
   "role": "teacher"
 }
 ```
@@ -102,7 +103,7 @@ Failure cases:
 
 | Scenario | HTTP | Code |
 | --- | --- | --- |
-| Email not `@bnbu.edu.cn` | 400 | `unknown_email_domain` |
+| Email outside the two supported BNBU domains | 400 | `unknown_email_domain` |
 | Missing/short password, mismatch on register | 400 | `validation_error` (with `fields`) |
 | Email already registered | 409 | `conflict` |
 | Wrong password on login | 401 | `unauthorized` |

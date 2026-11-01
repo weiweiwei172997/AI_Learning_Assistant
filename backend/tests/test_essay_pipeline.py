@@ -1,8 +1,13 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 from backend.core.runs import create_run, make_run_executor
+from backend.pipelines.essay_html import build_essay_html_prompt
 from backend.providers.base import ModelProviderError
+from backend.providers.openai_compatible import OpenAICompatibleTextProvider
 
 
 ESSAY_HTML = """```html
@@ -15,6 +20,81 @@ ESSAY_HTML = """```html
 <body><article><h1>Answer</h1><p>A concise essay.</p></article></body>
 </html>
 ```"""
+
+
+@pytest.mark.parametrize("profile_source", ["selected", "default", "environment"])
+@pytest.mark.parametrize("supports_streaming", [True, False])
+def test_run_preserves_streaming_setting_through_real_provider(
+    tmp_path, repo_with_user, mock_pdf_converter, noop_search_adapter,
+    monkeypatch, profile_source, supports_streaming,
+):
+    repo, user = repo_with_user
+    profile = None
+    if profile_source == "environment":
+        monkeypatch.setenv("MODEL_SUPPORTS_STREAMING", str(supports_streaming).lower())
+    else:
+        profile = repo.create_model_profile(
+            user_id=user["id"], display_name="Stream test", provider="openai_compatible",
+            base_url="https://example.com/v1", model="mock", api_key_ref="env:MODEL_API_KEY",
+            supports_streaming=supports_streaming, is_default=profile_source == "default",
+        )
+    monkeypatch.setattr("backend.providers.openai_compatible.resolve_api_key", lambda _: "mock-key")
+    seen = []
+    closed = []
+
+    class Stream:
+        def __iter__(self):
+            yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=ESSAY_HTML))])
+
+        def close(self):
+            closed.append(True)
+
+    def create(**kwargs):
+        seen.append(kwargs)
+        if kwargs["stream"]:
+            return Stream()
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=ESSAY_HTML))])
+
+    monkeypatch.setattr(
+        "backend.providers.openai_compatible.OpenAI",
+        lambda **_: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+    )
+    requests = []
+
+    class RecordingProvider(OpenAICompatibleTextProvider):
+        def generate_text(self, request):
+            requests.append(request)
+            return super().generate_text(request)
+
+    request = {"task_text": "Write a short essay.", "intent": "essay_latex", "search_mode": "off"}
+    if profile_source == "selected":
+        request["model_profile_id"] = profile["id"]
+    body = create_run(
+        repo, current_user=user, request=request,
+        workspace_root=str(tmp_path / "workspace"),
+        executor=make_run_executor(RecordingProvider(), pdf_converter=mock_pdf_converter),
+        search_adapter=noop_search_adapter,
+    )
+
+    assert body["status"] == "succeeded"
+    assert requests[0].profile["supports_streaming"] is supports_streaming
+    assert seen[0]["stream"] is supports_streaming
+    assert closed == ([True] if supports_streaming else [])
+
+
+def test_deployment_report_prompt_requires_truthful_evidence_and_page_limit():
+    system_prompt, user_prompt = build_essay_html_prompt(
+        task_text="Write the BA3073 cloud deployment report.",
+        context_bundle="",
+        options={},
+        search={"citations": []},
+    )
+
+    assert "cloud deployment reports" in system_prompt
+    assert "distinguish completed work from planned or unverified work" in system_prompt
+    assert "never invent deployment results" in system_prompt
+    assert "20 A4 pages" in user_prompt
+    assert "evidence placeholders" in user_prompt
 
 
 def test_essay_html_pipeline_writes_source_and_converted_pdf(
@@ -55,6 +135,8 @@ def test_essay_html_pipeline_writes_source_and_converted_pdf(
     assert mock_pdf_converter.calls[0]["page_config"].width == "210mm"
     assert "self-contained HTML document" in provider.requests[0].user_prompt
     assert "remote HTTP(S) assets" in provider.requests[0].user_prompt
+    assert provider.requests[0].max_output_tokens == 20000
+    assert body["context"]["estimated_output_tokens"] == 20000
 
     manifest = json.loads((output_root / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["status"] == "succeeded"

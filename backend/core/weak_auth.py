@@ -11,6 +11,7 @@ from backend.storage.sqlite import SQLiteRepository
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_HASH_ITERATIONS = 120_000
 SESSION_TTL_DAYS = 7
+INSTITUTIONAL_EMAIL_DOMAINS = ("bnbu.edu.cn", "mail.bnbu.edu.cn")
 
 
 class AuthError(Exception):
@@ -34,7 +35,7 @@ def normalize_email(email: str) -> str:
 
 def role_for_email(email: str) -> str:
     normalized = normalize_email(email)
-    if normalized.endswith("@bnbu.edu.cn"):
+    if any(normalized.endswith(f"@{domain}") for domain in INSTITUTIONAL_EMAIL_DOMAINS):
         return "teacher"
     raise AuthError(
         400,

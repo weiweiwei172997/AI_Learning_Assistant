@@ -19,6 +19,14 @@ local-ui-check.txt
 ecs-docker-check.txt
 ecs-web-service-test.txt
 
+# Local deployment records, generated submission reports, and scratch files
+docs/BA3073_DEPLOYMENT_REPORT/
+docs/ECS_DEPLOYMENT.md
+tmp/
+password.txt
+acr-password.txt
+qwen api.txt
+
 # Python virtual environments, bytecode, and test/tool caches
 .venv/
 venv/

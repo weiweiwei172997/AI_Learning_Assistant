@@ -31,7 +31,7 @@ repository artifacts carry the behavior.
 | Local-first Docker runtime | Docker Compose backend container with mounted `data/` and `workspace/`, macOS one-click launcher stubs, Electron shell wrapper | `compose.yml`, `Dockerfile`, `apps/desktop/`, `run_web.command`, `run_desktop.command`, `scripts/launcher-*.sh` |
 | SQLite metadata store | Repository foundation with schema init and repos for users, sessions, model profiles, runs, uploads, artifacts, citations, courses | `backend/storage/sqlite.py`, `docs/CONTRACTS/sqlite-schema.md` |
 | Artifact filesystem | Run folders, safe filenames, manifests, PDF/HTML source persistence; metadata in SQLite, bytes on disk | `backend/artifacts/filesystem.py`, `docs/CONTRACTS/artifact-filesystem.md` |
-| BNBU weak auth | Registration/login for `@bnbu.edu.cn`; opaque bearer tokens; isolated for replacement | `backend/api/auth.py`, `backend/core/weak_auth.py`, `docs/CONTRACTS/auth.md` |
+| BNBU weak auth | Registration/login for `@bnbu.edu.cn` and `@mail.bnbu.edu.cn`; opaque bearer tokens; isolated for replacement | `backend/api/auth.py`, `backend/core/weak_auth.py`, `docs/CONTRACTS/auth.md` |
 | Upload ingestion | Authenticated multipart uploads, phase-1 file types, owner-scoped metadata, size/type validation | `backend/api/uploads.py`, `backend/core/uploads.py`, `docs/CONTRACTS/uploads.md` |
 | Model provider abstraction | OpenAI-compatible Qwen client, redacted profile metadata, local secret file/env boundary, mock provider for testing | `backend/providers/`, `backend/core/model_settings.py`, `docs/CONTRACTS/model-settings.md` |
 | Generation run API | Authenticated run creation/status with explicit artifact intents, stage events, comfort progress | `backend/api/runs.py`, `backend/core/runs.py`, `backend/core/run_events.py`, `docs/CONTRACTS/generation-pipeline.md` |
@@ -48,6 +48,44 @@ repository artifacts carry the behavior.
 | Run timing instrumentation | Per-stage timing for preparation, model calls, HTML-to-PDF conversion, and artifact persistence | `backend/timing.py` |
 | Electron desktop shell | Docker detection, backend health polling, workbench window lifecycle | `apps/desktop/src/main.js`, `apps/desktop/src/runtime.js` |
 | E2E smoke coverage | Mocked-provider end-to-end test exercising auth, settings, run creation, status events, manifest, and static serving | `scripts/smoke_e2e.sh` |
+
+## Complete Assignment Report Output Budget (2026-11-01)
+
+Essay/report generation now reserves 20,000 output tokens instead of 6,000 so a
+complete BA3073 report can include all three tasks, executable command examples,
+and evidence explanations within the requested page limit. The context estimator
+uses the same allowance passed to the model provider; code, slides, and cheat-sheet
+budgets are unchanged. The existing essay pipeline integration test verifies that
+the expanded allowance reaches both the provider request and API context metadata.
+
+The local OpenAI-compatible provider now uses a 1,200-second read timeout for
+requests with more than 16,000 output tokens, a 900-second timeout for requests
+between 6,001 and 16,000, and a 300-second timeout at or below 6,000. Connect,
+write, and pool timeouts remain 15 seconds,
+and `max_retries=1` is unchanged. This adjustment follows local `qwen3.8-max` run
+`ae7655f0-1174-4e7f-931e-eced65c286b3`, whose manifest records 601,882 ms in
+`provider_generation` and whose generation log records `provider_timeout`.
+This is a local configuration for generating the longer report; it has not been
+deployed to ECS. Provider/model verification recorded 14 passing tests and one
+existing Windows failure in the POSIX `0600` permission assertion. Mocked request
+checks at 6,000, 6,001, 16,000, 16,001, and 20,000 output tokens verify the timeout
+boundaries. The initial 16,000-token allowance was raised after report run
+`3a3a6318-de85-4a3b-9194-b3be1f23ea37` preserved the deployment content but
+truncated the final evidence-index entry.
+
+The OpenAI-compatible adapter now receives provider chunks when a profile
+explicitly sets `supports_streaming=true`, concatenates only `delta.content`,
+and closes the stream on success or failure. False or absent streaming support
+retains non-streamed completions. This avoids waiting for a whole long report
+before receiving response bytes while preserving the provider's string return
+value, artifact pipeline, model, credentials, and frontend API. Stream iteration
+uses the existing safe provider error mapping; reasoning chunks are not report
+content. Focused provider tests cover aggregation, empty chunks/output,
+non-streaming compatibility, and iteration failures without real API calls.
+Run model resolution preserves the streaming flag for both saved profiles and
+environment defaults. Essay integration checks exercise selected, default, and
+environment profiles through the real provider with a mocked SDK, verifying
+both enabled and disabled settings reach the completion request.
 
 ## Account-Specific API Keys (2026-10-08)
 

@@ -141,7 +141,21 @@ def build_essay_html_prompt(
     system_prompt = (
         "You are an expert teaching assistant writing complete academic essay and "
         "report deliverables as self-contained HTML documents. Return only the "
-        "requested HTML source, with no surrounding explanation."
+        "requested HTML source, with no surrounding explanation. For technical "
+        "coursework and cloud deployment reports, organize the document around "
+        "the objective, system architecture, implementation steps, verification "
+        "evidence, security and cost considerations, limitations, improvements, "
+        "and conclusion, adapting sections to the assignment. Explain how each "
+        "major component works and why each deployment decision was made. Use "
+        "only facts supported by the assignment brief or supplied evidence. "
+        "Clearly distinguish completed work from planned or unverified work; "
+        "never invent deployment results, IP addresses, domains, dates, "
+        "screenshots, command output, or references. If required evidence is "
+        "missing, mark it with a clear evidence-needed placeholder and do not "
+        "present that placeholder as a real result. Refer to supplied evidence "
+        "by its actual filename and caption. Follow any explicit page limit, "
+        "including references, and prioritize concise technical explanations "
+        "over repetition."
     )
     output_instruction = (
         "Return one complete self-contained HTML document. It must start with "
@@ -153,8 +167,11 @@ def build_essay_html_prompt(
         "needed, include inline KaTeX-compatible markup and any needed minimal "
         "KaTeX styling inline in the document; do not fetch KaTeX from a CDN at "
         "render time. Use inline SVG or CSS for diagrams. Cite any provided web "
-        "sources in a References section using ordinary HTML. Do not wrap the "
-        "answer in Markdown fences."
+        "sources in a References section using ordinary HTML; do not invent "
+        "citations. For this assignment report, keep the complete PDF, including "
+        "references, within 20 A4 pages and use clearly labeled evidence "
+        "placeholders wherever required screenshots or deployment results have "
+        "not been supplied. Do not wrap the answer in Markdown fences."
     )
     user_prompt = "\n\n".join(
         [

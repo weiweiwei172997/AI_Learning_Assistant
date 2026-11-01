@@ -876,6 +876,7 @@ def _resolve_model_for_run(
             "model": defaults["model"],
             "api_key_ref": MODEL_API_KEY_REF,
             "context_window_hint": defaults["context_window_hint"],
+            "supports_streaming": defaults["supports_streaming"],
         }
 
     return {
@@ -885,6 +886,7 @@ def _resolve_model_for_run(
         "model": profile["model"],
         "api_key_ref": profile.get("api_key_ref") or MODEL_API_KEY_REF,
         "context_window_hint": profile.get("context_window_hint"),
+        "supports_streaming": bool(profile.get("supports_streaming")),
     }
 
 

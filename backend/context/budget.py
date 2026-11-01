@@ -73,7 +73,9 @@ def output_token_budget(intent: str, options: dict[str, Any] | None = None) -> i
     if intent == "code_homework":
         return 4000
     if intent == "essay_latex":
-        return 6000
+        # Reserve enough source for a complete assignment report with command
+        # examples and evidence, rather than forcing a short essay-sized output.
+        return 20000
     if intent == "beamer_slides":
         return 7000
     if intent == "cheat_sheet":

@@ -9,6 +9,8 @@ from backend.core.model_settings import SettingsError, resolve_api_key
 from backend.providers.base import ModelProviderError, TextGenerationRequest
 
 GENERATION_TIMEOUT = httpx.Timeout(connect=15.0, read=300.0, write=15.0, pool=15.0)
+LONG_GENERATION_TIMEOUT = httpx.Timeout(connect=15.0, read=900.0, write=15.0, pool=15.0)
+EXTENDED_GENERATION_TIMEOUT = httpx.Timeout(connect=15.0, read=1200.0, write=15.0, pool=15.0)
 
 
 def test_openai_compatible_provider(profile: dict[str, Any], api_key: str) -> dict[str, Any]:
@@ -49,13 +51,20 @@ class OpenAICompatibleTextProvider:
                 "No model API key is configured.",
             )
 
+        timeout = GENERATION_TIMEOUT
+        if request.max_output_tokens > 16000:
+            timeout = EXTENDED_GENERATION_TIMEOUT
+        elif request.max_output_tokens > 6000:
+            timeout = LONG_GENERATION_TIMEOUT
+
         client = OpenAI(
             api_key=api_key,
             base_url=profile["base_url"],
-            timeout=GENERATION_TIMEOUT,
+            timeout=timeout,
             max_retries=1,
         )
         try:
+            use_stream = profile.get("supports_streaming") is True
             response = client.chat.completions.create(
                 model=profile["model"],
                 messages=[
@@ -64,13 +73,25 @@ class OpenAICompatibleTextProvider:
                 ],
                 max_tokens=request.max_output_tokens,
                 temperature=request.temperature,
+                stream=use_stream,
             )
+            if use_stream:
+                try:
+                    parts = []
+                    for chunk in response:
+                        if chunk.choices and chunk.choices[0].delta.content:
+                            parts.append(chunk.choices[0].delta.content)
+                    content = "".join(parts)
+                finally:
+                    response.close()
+            else:
+                content = response.choices[0].message.content if response.choices else None
         except AuthenticationError as exc:
             raise ModelProviderError(
                 "provider_auth_failed",
                 "The model provider rejected the API key. Update it in model settings.",
             ) from exc
-        except APITimeoutError as exc:
+        except (APITimeoutError, httpx.TimeoutException) as exc:
             raise ModelProviderError(
                 "provider_timeout",
                 "The model provider did not respond in time. The generation may be too large; try a shorter brief or fewer target pages.",
@@ -86,7 +107,6 @@ class OpenAICompatibleTextProvider:
                 "The model provider request failed.",
             ) from exc
 
-        content = response.choices[0].message.content if response.choices else None
         if not content:
             raise ModelProviderError(
                 "provider_unavailable",

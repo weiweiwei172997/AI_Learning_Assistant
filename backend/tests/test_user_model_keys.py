@@ -86,8 +86,20 @@ def test_saved_key_used_for_connection_test_and_generation(keys, monkeypatch):
     seen = []
     def fake_openai(**kwargs):
         seen.append(kwargs["api_key"])
+        def create(**request):
+            if request.get("stream"):
+                return SimpleNamespaceStream()
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="Generated"))])
+
+        class SimpleNamespaceStream:
+            def __iter__(self):
+                yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content="Generated"))])
+
+            def close(self):
+                pass
+
         return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(
-            create=lambda **_: SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="Generated"))])
+            create=create
         )))
     monkeypatch.setattr("backend.providers.openai_compatible.OpenAI", fake_openai)
     provider = OpenAICompatibleTextProvider()

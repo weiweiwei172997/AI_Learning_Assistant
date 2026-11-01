@@ -56,7 +56,7 @@ All four generation capabilities are functional: code homework, essay PDFs, pres
 
 ## Users
 
-- BNBU users using `@bnbu.edu.cn` accounts who create model answers, code solutions, slides, and course cheat sheets.
+- BNBU users using `@bnbu.edu.cn` or `@mail.bnbu.edu.cn` accounts who create model answers, code solutions, slides, and course cheat sheets.
 - The developer/operator who needs local `.env` or equivalent secret injection for smoke testing without committing secrets.
 - Future deployment agents that may package the same product as a native app, signed macOS `.app`, or hosted server.
 
@@ -107,7 +107,7 @@ All four generation capabilities are functional: code homework, essay PDFs, pres
 
 ## Functional Requirements
 
-- Weak auth must support registration and login for `@bnbu.edu.cn`.
+- Weak auth must support registration and login for `@bnbu.edu.cn` and `@mail.bnbu.edu.cn`.
 - BNBU accounts have full artifact generation capability in phase 1.
 - Model settings must allow user-supplied API key, base URL, and model name.
 - Default model settings must target Qwen-compatible usage and be overridable by untracked local config.

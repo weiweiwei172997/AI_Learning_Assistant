@@ -1,10 +1,10 @@
 <!--
 Owner: project-maintainer
-Last Reviewed: 2026-09-13
+Last Reviewed: 2026-10-27
 Status: Accepted
 -->
 
-# ADR 010: BNBU-Only Institutional Auth
+# ADR 010: BNBU Institutional Auth
 
 ## Context
 
@@ -14,12 +14,17 @@ documentation creates misleading sign-in guidance.
 
 ## Decision
 
-Weak local authentication accepts only addresses ending in `@bnbu.edu.cn`.
-Existing role and token response shapes remain unchanged; accepted BNBU accounts
-use the `teacher` role, which retains full phase-1 generation capability.
+Weak local authentication accepts addresses ending in `@bnbu.edu.cn` or
+`@mail.bnbu.edu.cn`. Existing role and token response shapes remain unchanged;
+accepted BNBU accounts use the `teacher` role, which retains full phase-1
+generation capability.
 
 All active product copy, tests, reference slide branding, and governance material
 use BNBU terminology.
+
+On 2026-10-27, the user confirmed the student domain as `@mail.bnbu.edu.cn`.
+The earlier `@mail.bnbu.cn` entry was a transcription error and is not an
+accepted domain.
 
 ## Consequences
 
